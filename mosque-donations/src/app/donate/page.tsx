@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 const donationSchema = z.object({
@@ -18,6 +18,23 @@ const preset = [50000, 100000, 200000, 500000];
 export default function DonatePage() {
   const [form, setForm] = useState<DonationForm>({ email: "", amount: 100000, method: "QRIS" });
   const [loading, setLoading] = useState(false);
+  const [methods, setMethods] = useState<DonationForm["method"][]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/config/payments");
+        const data = await res.json();
+        setMethods(data.methods as DonationForm["method"][]);
+        // Default to first enabled method if current is not allowed
+        if (!data.methods.includes(form.method)) {
+          setForm((f) => ({ ...f, method: (data.methods[0] ?? "QRIS") as DonationForm["method"] }));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
@@ -72,14 +89,9 @@ export default function DonatePage() {
           </div>
           <label className="block">Metode Pembayaran</label>
           <select className="w-full border rounded px-3 py-2" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value as DonationForm["method"] })}>
-            <option>QRIS</option>
-            <option>DANA</option>
-            <option>OVO</option>
-            <option>GOPAY</option>
-            <option>BCA</option>
-            <option>BNI</option>
-            <option>BRI</option>
-            <option>MANDIRI</option>
+            {methods.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
           {error && <p className="text-sm text-red-700">{error}</p>}
           <button disabled={loading} className="btn-primary w-full">{loading ? "Memproses..." : "Donasi Sekarang"}</button>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { generateTransactionCode } from "@/lib/utils";
 import { createQrisCharge, createVaCharge } from "@/lib/midtrans";
+import { getEnabledPaymentMethods } from "@/lib/config";
 
 const requestSchema = z.object({
   name: z.string().optional(),
@@ -19,6 +20,10 @@ export async function POST(req: Request) {
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
     const { name, email, amount, message, method } = parsed.data;
+    const enabled = getEnabledPaymentMethods();
+    if (!enabled.includes(method)) {
+      return NextResponse.json({ error: "Metode pembayaran tidak tersedia" }, { status: 400 });
+    }
     const transactionCode = generateTransactionCode();
 
     const donation = await prisma.donation.create({
